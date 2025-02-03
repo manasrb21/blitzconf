@@ -11,7 +11,7 @@ import (
 )
 
 func TestLoadYAMLConfig(t *testing.T) {
-	filePath := "../examples/config.yaml"
+	filePath := "config.yaml"
 	fmt.Printf("🔍 Attempting to load YAML file: %s\n", filePath)
 	cfg, err := blitzconf.Load(filePath)
 	assert.NoError(t, err, "Loading YAML config should not fail")
@@ -21,7 +21,7 @@ func TestLoadYAMLConfig(t *testing.T) {
 }
 
 func TestLoadJSONConfig(t *testing.T) {
-	filePath := "../examples/config.json"
+	filePath := "config.json"
 	fmt.Printf("🔍 Attempting to load JSON file: %s\n", filePath)
 	cfg, err := blitzconf.Load(filePath) // Assume JSON file exists
 	assert.NoError(t, err, "Loading JSON config should not fail")
@@ -31,10 +31,18 @@ func TestLoadJSONConfig(t *testing.T) {
 }
 
 func TestEnvOverride(t *testing.T) {
-	filePath := "../examples/config.yaml"
+	filePath := "config.yaml"
 	fmt.Printf("🔍 Attempting to load YAML file with ENV override: %s\n", filePath)
-	os.Setenv("SERVER_PORT", "9090")
-	defer os.Unsetenv("SERVER_PORT")
+	err := os.Setenv("SERVER_PORT", "9090")
+	if err != nil {
+		return
+	}
+	defer func() {
+		err := os.Unsetenv("SERVER_PORT")
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	cfg, err := blitzconf.Load(filePath)
 	assert.NoError(t, err, "Loading YAML config should not fail")
@@ -43,7 +51,7 @@ func TestEnvOverride(t *testing.T) {
 }
 
 func TestMissingKey(t *testing.T) {
-	filePath := "../examples/config.yaml"
+	filePath := "config.yaml"
 	fmt.Printf("🔍 Attempting to load YAML file for missing key test: %s\n", filePath)
 	cfg, err := blitzconf.Load(filePath)
 	assert.NoError(t, err, "Loading YAML config should not fail")
