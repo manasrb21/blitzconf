@@ -1,4 +1,4 @@
-module blitzconf
+module github.com/manasrb21/blitzconf
 
 go 1.23
 
