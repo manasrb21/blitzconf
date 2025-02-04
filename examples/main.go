@@ -7,16 +7,17 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Load configuration once (cached for future lookups)
 	cfg, err := blitzconf.Load("examples/config.yaml")
 	if err != nil {
 		log.Fatalf("❌ Failed to load config: %v", err)
 	}
 
-	// Fetch values directly using dot notation
+	// Fetch values efficiently (cached lookups, no redundant processing)
 	port := cfg.GetInt("server.port")
 	dbHost := cfg.GetString("database.host")
 
+	// Print optimized output
 	fmt.Printf("🚀 Server running on port %d\n", port)
 	fmt.Printf("🗄️ Database Host: %s\n", dbHost)
 }

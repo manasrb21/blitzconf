@@ -1,70 +1,69 @@
 package blitzconf
 
 import (
+	"encoding/json"
 	"fmt"
-	"strings"
+	"sync"
+
+	"golang.org/x/exp/mmap" // Import memory-mapped files for fast reads
+	"gopkg.in/yaml.v3"
 )
 
-// ConfigLoader holds parsed configuration data
+// ConfigLoader holds the loaded configuration
 type ConfigLoader struct {
 	data map[string]interface{}
 }
 
-// Load loads a YAML or JSON config file
+// Global Cache
+var (
+	configCache map[string]interface{}
+	once        sync.Once
+)
+
+// Load parses the config file and caches it using mmap
 func Load(configFile string) (*ConfigLoader, error) {
-	parsedData, err := ReadConfigFile(configFile)
+	var err error
+	once.Do(func() {
+		configCache, err = readConfigFile(configFile)
+		if err != nil {
+			fmt.Printf("❌ Failed to parse config file: %v\n", err)
+		}
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	OverrideWithEnv(parsedData)
-
-	return &ConfigLoader{data: parsedData}, nil
+	OverrideWithEnv(configCache)
+	return &ConfigLoader{data: configCache}, nil
 }
 
-// Get retrieves a config value, supporting dot-notation (e.g., "server.port")
-func (c *ConfigLoader) Get(key string) interface{} {
-	keys := strings.Split(key, ".")
-	val := c.data
-
-	for _, k := range keys {
-		nextVal, exists := val[k]
-		if !exists {
-			fmt.Printf("⚠️ Key not found: %s\n", key)
-			return nil
-		}
-
-		// If it's a nested map, continue navigating
-		if nestedMap, ok := nextVal.(map[string]interface{}); ok {
-			val = nestedMap
-		} else {
-			// If we reached the final value, return it
-			return nextVal
-		}
+// readConfigFile reads and unmarshals YAML/JSON using memory-mapped files
+func readConfigFile(configFile string) (map[string]interface{}, error) {
+	reader, err := mmap.Open(configFile) // Open file as memory-mapped
+	if err != nil {
+		return nil, fmt.Errorf("❌ Failed to mmap config file: %w", err)
 	}
-	return val
-}
+	defer reader.Close()
 
-// GetString retrieves a string value safely
-func (c *ConfigLoader) GetString(key string) string {
-	val := c.Get(key)
-	if str, ok := val.(string); ok {
-		return str
+	data := make([]byte, reader.Len())
+	_, err = reader.ReadAt(data, 0) // Read the entire file
+	if err != nil {
+		return nil, fmt.Errorf("❌ Failed to read mmap data: %w", err)
 	}
-	fmt.Printf("⚠️ Type assertion failed for key: %s\n", key)
-	return ""
-}
 
-// GetInt retrieves an integer value safely, handling float64 conversions
-func (c *ConfigLoader) GetInt(key string) int {
-	val := c.Get(key)
-	switch v := val.(type) {
-	case int:
-		return v
-	case float64:
-		return int(v) // Convert float64 to int
+	parsedData := make(map[string]interface{})
+	switch {
+	case configFile[len(configFile)-4:] == "yaml" || configFile[len(configFile)-3:] == "yml":
+		if err := yaml.Unmarshal(data, &parsedData); err != nil {
+			return nil, fmt.Errorf("❌ YAML parsing failed: %w", err)
+		}
+	case configFile[len(configFile)-4:] == "json":
+		if err := json.Unmarshal(data, &parsedData); err != nil {
+			return nil, fmt.Errorf("❌ JSON parsing failed: %w", err)
+		}
 	default:
-		fmt.Printf("⚠️ Type assertion failed for key: %s\n", key)
-		return 0
+		return nil, fmt.Errorf("❌ Unsupported config format")
 	}
+	return parsedData, nil
 }
