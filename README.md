@@ -4,7 +4,7 @@
 
 ## Status
 - **Development:** Active 🚧
-- **Testing:** Pending 🛠️
+- **Testing:** In progress v0.2.0 🛠️
 - **Stability:** Not yet production-ready ❌
 
 ## Purpose
