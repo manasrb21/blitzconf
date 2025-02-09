@@ -71,3 +71,25 @@ func (c *ConfigLoader) GetString(key string) string {
 		return ""
 	}
 }
+
+func (c *ConfigLoader) GetStringSlice(key string) []string {
+	val := c.Get(key)
+	if val == nil {
+		return []string{}
+	}
+
+	switch v := val.(type) {
+	case []interface{}: // Handle YAML lists
+		var result []string
+		for _, item := range v {
+			if str, ok := item.(string); ok {
+				result = append(result, str)
+			}
+		}
+		return result
+	case string: // Handle comma-separated values
+		return strings.Split(v, ",")
+	default:
+		return []string{}
+	}
+}
